@@ -26,83 +26,7 @@ public class UtilCraftPlus : Mod
     public void Start()
     {
         RConsole.Log("\"Utility Craft +\" starts loading.");
-        RConsole.Log("Adding recipe for tree seeds.");
-        CreateTreeSeedRecipe(Items.Seed_Mango, new CostMultiple(new Item_Base[] { Items.Mango }, 1));
-        CreateTreeSeedRecipe(Items.Seed_Palm, new CostMultiple(new Item_Base[] { Items.Coconut }, 1));
-        RConsole.Log("Adding recipe for fruit seeds.");
-        CreateFruitSeedRecipe(Items.Seed_Watermelon, new CostMultiple(new Item_Base[] { Items.Watermelon }, 1));
-        CreateFruitSeedRecipe(Items.Seed_Pineapple, new CostMultiple(new Item_Base[] { Items.Pineapple }, 1));
-        RConsole.Log("Adding recipe for Flower seeds.");
-        CreateFlowerSeedRecipe(Items.Seed_Flower_Red, new CostMultiple(new Item_Base[] { Items.Flower_Red }, 1));
-        CreateFlowerSeedRecipe(Items.Seed_Flower_Yellow, new CostMultiple(new Item_Base[] { Items.Flower_Yellow }, 1));
-        CreateFlowerSeedRecipe(Items.Seed_Flower_Blue, new CostMultiple(new Item_Base[] { Items.Flower_Blue }, 1));
-        CreateFlowerSeedRecipe(Items.Seed_Flower_Black, new CostMultiple(new Item_Base[] { Items.Flower_Black }, 1));
-        CreateFlowerSeedRecipe(Items.Seed_Flower_White, new CostMultiple(new Item_Base[] { Items.Flower_White }, 1));
-        RConsole.Log("Changing max stack sizes.");
-        ChangeItemMaxStackSize(Items.Plastic, 100);
-        ChangeItemMaxStackSize(Items.Plank, 100);
-        ChangeItemMaxStackSize(Items.Thatch, 100);
-        ChangeItemMaxStackSize(Items.Rope, 100);
-        ChangeItemMaxStackSize(Items.Scrap, 100);
-        ChangeItemMaxStackSize(Items.Nail, 100);
-        ChangeItemMaxStackSize(Items.MetalOre, 100);
-        ChangeItemMaxStackSize(Items.MetalIngot, 100);
-        ChangeItemMaxStackSize(Items.Bolt, 100);
-        ChangeItemMaxStackSize(Items.Hinge, 100);
-        ChangeItemMaxStackSize(Items.CopperOre, 100);
-        ChangeItemMaxStackSize(Items.CopperIngot, 100);
-        ChangeItemMaxStackSize(Items.Clay, 100);
-        ChangeItemMaxStackSize(Items.Sand, 100);
-        ChangeItemMaxStackSize(Items.Glass, 100);
-        ChangeItemMaxStackSize(Items.Brick_Dry, 100);
-        ChangeItemMaxStackSize(Items.SeaVine, 100);
-        ChangeItemMaxStackSize(Items.VineGoo, 100);
-        ChangeItemMaxStackSize(Items.Raw_Beet, 250);
-        ChangeItemMaxStackSize(Items.Raw_Catfish, 250);
-        ChangeItemMaxStackSize(Items.Raw_Drumstick, 250);
-        ChangeItemMaxStackSize(Items.Raw_GenericMeat, 250);
-        ChangeItemMaxStackSize(Items.Raw_Herring, 250);
-        ChangeItemMaxStackSize(Items.Raw_Mackerel, 250);
-        ChangeItemMaxStackSize(Items.Raw_Pomfret, 250);
-        ChangeItemMaxStackSize(Items.Raw_Potato, 250);
-        ChangeItemMaxStackSize(Items.Raw_Salmon, 250);
-        ChangeItemMaxStackSize(Items.Raw_Shark, 250);
-        ChangeItemMaxStackSize(Items.Raw_Tilapia, 250);
-        ChangeItemMaxStackSize(Items.Cooked_Beet, 250);
-        ChangeItemMaxStackSize(Items.Cooked_Catfish, 250);
-        ChangeItemMaxStackSize(Items.Cooked_Drumstick, 250);
-        ChangeItemMaxStackSize(Items.Cooked_GenericMeat, 250);
-        ChangeItemMaxStackSize(Items.Cooked_Herring, 250);
-        ChangeItemMaxStackSize(Items.Cooked_Mackerel, 250);
-        ChangeItemMaxStackSize(Items.Cooked_Pomfret, 250);
-        ChangeItemMaxStackSize(Items.Cooked_Potato, 250);
-        ChangeItemMaxStackSize(Items.Cooked_Salmon, 250);
-        ChangeItemMaxStackSize(Items.Cooked_Shark, 250);
-        ChangeItemMaxStackSize(Items.Cooked_Tilapia, 250);
-        ChangeItemMaxStackSize(Items.Mango, 250);
-        ChangeItemMaxStackSize(Items.Coconut, 250);
-        ChangeItemMaxStackSize(Items.Pineapple, 250);
-        ChangeItemMaxStackSize(Items.Watermelon, 250);
-        ChangeItemMaxStackSize(Items.Seed_Birch, 500);
-        ChangeItemMaxStackSize(Items.Seed_Flower_Black, 500);
-        ChangeItemMaxStackSize(Items.Seed_Flower_Blue, 500);
-        ChangeItemMaxStackSize(Items.Seed_Flower_Red, 500);
-        ChangeItemMaxStackSize(Items.Seed_Flower_White, 500);
-        ChangeItemMaxStackSize(Items.Seed_Flower_Yellow, 500);
-        ChangeItemMaxStackSize(Items.Seed_Grass, 500);
-        ChangeItemMaxStackSize(Items.Seed_Mango, 500);
-        ChangeItemMaxStackSize(Items.Seed_Palm, 500);
-        ChangeItemMaxStackSize(Items.Seed_Pine, 500);
-        ChangeItemMaxStackSize(Items.Seed_Pineapple, 500);
-        ChangeItemMaxStackSize(Items.Seed_Watermelon, 500);
-        ChangeItemMaxStackSize(Items.Arrow_Stone, 1000);
-        ChangeItemMaxStackSize(Items.Arrow_Metal, 1000);
-        ChangeItemMaxStackSize(Items.Feather, 1000);
-        ChangeItemMaxStackSize(Items.Color_Black, 1000);
-        ChangeItemMaxStackSize(Items.Color_Blue, 1000);
-        ChangeItemMaxStackSize(Items.Color_Red, 1000);
-        ChangeItemMaxStackSize(Items.Color_White, 1000);
-        ChangeItemMaxStackSize(Items.Color_Yellow, 1000);
+        INI.SetConfigurationFromINI();
         RConsole.Log("UtilCraft+ has been loaded!");
     }
 
@@ -193,13 +117,15 @@ public class UtilCraftPlus : Mod
 
         public static void SetConfigurationFromINI()
         {
-            using (StreamReader stream = new StreamReader(File.OpenRead("\\mods\\config\\utilcraftplus.ini")))
+            using (StreamReader stream = new StreamReader(File.OpenRead(Directory.GetCurrentDirectory() + "\\mods\\ModData\\UtilCraftPlus\\config\\utilcraftplus.ini")))
             {
                 string currentCategory = "";
                 string rawData;
                 while (!stream.EndOfStream)
                 {
                     rawData = stream.ReadLine();
+                    if (rawData == "")
+                        continue;
                     RemoveWhiteSpace(ref rawData);
                     if (rawData == "")
                         continue;
@@ -220,7 +146,6 @@ public class UtilCraftPlus : Mod
                         if (currentCategory == "Recipes")
                         {
                             string[] costItemAmount = keyValueData[1].Split(new char[] { ',' }, 2);
-                            if (keyValueData[0] == "Seed_Palm")
                                 CreateTreeSeedRecipe(Items.Seed_Palm, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
                             if (keyValueData[0] == "Seed_Mango")
                                 CreateTreeSeedRecipe(Items.Seed_Mango, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));

@@ -269,7 +269,7 @@
     <Folder Include="Properties\" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="config\utilcraftplus.ini" />
+    <None Include="ModData\UtilCraftPlus\config\utilcraftplus.ini" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
