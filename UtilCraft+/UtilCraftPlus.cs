@@ -11,7 +11,7 @@ using UnityEngine;
 [ModIconUrl("")]
 [ModWallpaperUrl("")]
 [ModVersionCheckUrl("")]
-[ModVersion("1.0")]
+[ModVersion("1.1")]
 [RaftVersion("11.0")]
 [ModIsPermanent(true)]
 public class UtilCraftPlus : Mod
