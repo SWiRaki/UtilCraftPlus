@@ -5,22 +5,24 @@ using System.Linq;
 using System.IO;
 using UnityEngine;
 
-[ModTitle("Utility Craft +")] // The mod name.
-[ModDescription("Adds simple crafting recipies and changed max stack sizes for some advanced gameplay, primarily for farming.")] // Short description for the mod.
-[ModAuthor("Kahmi")] // The author name of the mod.
-[ModIconUrl("")] // An icon for your mod. Its recommended to be 128x128px and in .jpg format.
-[ModWallpaperUrl("")] // A banner for your mod. Its recommended to be 330x100px and in .jpg format.
-[ModVersionCheckUrl("")] // This is for update checking. Needs to be a .txt file with the latest mod version.
-[ModVersion("1.0")] // This is the mod version.
-[RaftVersion("11.0")] // This is the recommended raft version.
-[ModIsPermanent(true)] // If your mod add new blocks, new items or just content you should set that to true. It loads the mod on start and prevents unloading.
+[ModTitle("Utility Craft +")]
+[ModDescription("Adds simple crafting recipies and changed max stack sizes for some advanced gameplay, primarily for farming.")]
+[ModAuthor("SWiRaki")]
+[ModIconUrl("")]
+[ModWallpaperUrl("")]
+[ModVersionCheckUrl("")]
+[ModVersion("1.0")]
+[RaftVersion("11.0")]
+[ModIsPermanent(true)]
 public class UtilCraftPlus : Mod
 {
-    private int _nextTreeSeedOrder;
-    private int _nextFruitSeedOrder;
-    private int _nextFlowerSeedOrder;
+    private static int _nextTreeSeedOrder;
+    private static int _nextFruitSeedOrder;
+    private static int _nextFlowerSeedOrder;
 
-    // The Start() method is being called when your mod gets loaded.
+    /// <summary>
+    /// Mod initialization point.
+    /// </summary>
     public void Start()
     {
         RConsole.Log("\"Utility Craft +\" starts loading.");
@@ -104,47 +106,152 @@ public class UtilCraftPlus : Mod
         RConsole.Log("UtilCraft+ has been loaded!");
     }
 
-    // The Update() method is being called every frame. Have fun!
+    /// <summary>
+    /// Function called every single frame.
+    /// </summary>
     public void Update()
     {
         
     }
 
-    // The OnModUnload() method is being called when your mod gets unloaded.
+    /// <summary>
+    /// Function unloading the mod.
+    /// </summary>
     public void OnModUnload()
     {
         RConsole.Log("UtilCraft+ has been unloaded!");
-        Destroy(gameObject); // Please do not remove that line!
+        Destroy(gameObject);
     }
 
-    public void ChangeItemMaxStackSize(Item_Base pItem, int pMaxStackSize)
+    /// <summary>
+    /// Changes the maximum stack size of given item.
+    /// </summary>
+    /// <param name="pItem">Item to change.</param>
+    /// <param name="pMaxStackSize">New maximum stack size.</param>
+    public static void ChangeItemMaxStackSize(Item_Base pItem, int pMaxStackSize)
     {
         pItem.settings_Inventory = new ItemInstance_Inventory(pItem.settings_Inventory.Sprite, pItem.settings_Inventory.LocalizationTerm, pMaxStackSize);
     }
-
-    public void CreateSeedRecipe(Item_Base pResultItem, string pSubCategory, int pSubCategoryOrder, params CostMultiple[] pCosts)
+    
+    /// <summary>
+    /// Function creating a new recipe setting with new recipe.
+    /// </summary>
+    /// <param name="pResultItem">Item resulting from the crafting.</param>
+    /// <param name="pSubCategory">Sub category tag.</param>
+    /// <param name="pSubCategoryOrder">Order position within the sub category.</param>
+    /// <param name="pCosts">Crafting costs.</param>
+    public static void CreateRecipe(Item_Base pResultItem, string pSubCategory, int pSubCategoryOrder, params CostMultiple[] pCosts)
     {
         pResultItem.settings_recipe = new ItemInstance_Recipe(CraftingCategory.FoodWater, true, true, pSubCategory, pSubCategoryOrder) { NewCost = pCosts };
     }
 
-    public void CreateTreeSeedRecipe(Item_Base pResultItem, params CostMultiple[] pCosts)
+    /// <summary>
+    /// Function creating a new recipe setting with new recipe for tree seeds.
+    /// </summary>
+    /// <param name="pResultItem">Item resulting from the crafting.</param>
+    /// <param name="pCosts">Crafting costs.</param>
+    public static void CreateTreeSeedRecipe(Item_Base pResultItem, params CostMultiple[] pCosts)
     {
-        CreateSeedRecipe(pResultItem, "Seed_Tree", _nextTreeSeedOrder, pCosts);
+        CreateRecipe(pResultItem, "Seed_Tree", _nextTreeSeedOrder, pCosts);
         _nextTreeSeedOrder++;
     }
 
-    public void CreateFruitSeedRecipe(Item_Base pResultItem, params CostMultiple[] pCosts)
+    /// <summary>
+    /// Function creating a new recipe setting with new recipe for fruit seeds.
+    /// </summary>
+    /// <param name="pResultItem">Item resulting from the crafting.</param>
+    /// <param name="pCosts">Crafting costs.</param>
+    public static void CreateFruitSeedRecipe(Item_Base pResultItem, params CostMultiple[] pCosts)
     {
-        CreateSeedRecipe(pResultItem, "Seed_Fruit", _nextTreeSeedOrder, pCosts);
+        CreateRecipe(pResultItem, "Seed_Fruit", _nextTreeSeedOrder, pCosts);
         _nextFruitSeedOrder++;
     }
 
-    public void CreateFlowerSeedRecipe(Item_Base pResultItem, params CostMultiple[] pCosts)
+    /// <summary>
+    /// Function creating a new recipe setting with new recipe for flower seeds.
+    /// </summary>
+    /// <param name="pResultItem">Item resulting from the crafting.</param>
+    /// <param name="pCosts">Crafting costs.</param>
+    public static void CreateFlowerSeedRecipe(Item_Base pResultItem, params CostMultiple[] pCosts)
     {
-        CreateSeedRecipe(pResultItem, "Seed_Flower", _nextTreeSeedOrder, pCosts);
+        CreateRecipe(pResultItem, "Seed_Flower", _nextTreeSeedOrder, pCosts);
         _nextFlowerSeedOrder++;
     }
 
+    /// <summary>
+    /// INI file manager
+    /// </summary>
+    private static class INI
+    {
+        private static void RemoveWhiteSpace(ref string pText)
+        {
+            while (pText[0] == ' ')
+                pText = pText.Substring(1);
+            while (pText[pText.Length - 1] == ' ')
+                pText = pText.Remove(pText.Length - 1);
+        }
+
+        public static void SetConfigurationFromINI()
+        {
+            using (StreamReader stream = new StreamReader(File.OpenRead("\\mods\\config\\utilcraftplus.ini")))
+            {
+                string currentCategory = "";
+                string rawData;
+                while (!stream.EndOfStream)
+                {
+                    rawData = stream.ReadLine();
+                    RemoveWhiteSpace(ref rawData);
+                    if (rawData == "")
+                        continue;
+                    if (rawData[0] ==  '[' && rawData[rawData.Length - 1] == ']')
+                    {
+                        currentCategory = rawData.Substring(1, rawData.Length - 2);
+                        if (currentCategory == "Recipes")
+                            RConsole.Log("Adding Recipes");
+                        if (currentCategory == "Stacks")
+                            RConsole.Log("Changing item stack sizes");
+                        continue;
+                    }
+                    else
+                    {
+                        string[] keyValueData = rawData.Split(new char[] { '=' }, 2);
+                        RemoveWhiteSpace(ref keyValueData[0]);
+                        RemoveWhiteSpace(ref keyValueData[1]); 
+                        if (currentCategory == "Recipes")
+                        {
+                            string[] costItemAmount = keyValueData[1].Split(new char[] { ',' }, 2);
+                            if (keyValueData[0] == "Seed_Palm")
+                                CreateTreeSeedRecipe(Items.Seed_Palm, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
+                            if (keyValueData[0] == "Seed_Mango")
+                                CreateTreeSeedRecipe(Items.Seed_Mango, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
+                            if (keyValueData[0] == "Seed_Watermelon")
+                                CreateFruitSeedRecipe(Items.Seed_Watermelon, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
+                            if (keyValueData[0] == "Seed_Pineapple")
+                                CreateFruitSeedRecipe(Items.Seed_Pineapple, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
+                            if (keyValueData[0] == "Seed_Flower_Red")
+                                CreateFlowerSeedRecipe(Items.Seed_Flower_Red, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
+                            if (keyValueData[0] == "Seed_Flower_Yellow")
+                                CreateFlowerSeedRecipe(Items.Seed_Flower_Yellow, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
+                            if (keyValueData[0] == "Seed_Flower_Blue")
+                                CreateFlowerSeedRecipe(Items.Seed_Flower_Blue, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
+                            if (keyValueData[0] == "Seed_Flower_Black")
+                                CreateFlowerSeedRecipe(Items.Seed_Flower_Black, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
+                            if (keyValueData[0] == "Seed_Flower_White")
+                                CreateFlowerSeedRecipe(Items.Seed_Flower_White, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
+                            continue;
+                        }
+                        if (currentCategory == "Stacks")
+                            ChangeItemMaxStackSize(ItemManager.GetItemByName(keyValueData[0]), int.Parse(keyValueData[1]));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Structure containing all vanilla items as constants
+    /// </summary>
     private struct Items
     {
         public static readonly Item_Base Block_Floor_Wood = ItemManager.GetItemByIndex(1);
