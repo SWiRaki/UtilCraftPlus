@@ -4,15 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using UnityEngine;
-using Harmony;
-
+using Node = UtilCraftPlus.INI.ININode<UtilCraftPlus.INI.ININodeParams>;
 [ModTitle("Utility Craft +")]
 [ModDescription("Adds simple crafting recipies and changed max stack sizes for some advanced gameplay, primarily for farming.")]
 [ModAuthor("SWiRaki")]
 [ModIconUrl("https://cdn.discordapp.com/attachments/713847871438585887/713867814016122961/craftingplus_icon.png")]
 [ModWallpaperUrl("https://cdn.discordapp.com/attachments/713847871438585887/713867813206622278/craftingplus_banner.jpg")]
 [ModVersionCheckUrl("https://raftmodding.com/api/v1/mods/utility-craft-plus/version.txt")]
-[ModVersion("1.1.3")]
+[ModVersion("1.1.2")]
 [RaftVersion("11.0")]
 [ModIsPermanent(true)]
 public class UtilCraftPlus : Mod
@@ -27,7 +26,9 @@ public class UtilCraftPlus : Mod
     public void Start()
     {
         RConsole.Log("\"Utility Craft +\" starts loading.");
+        INI.Open();
         INI.SetConfigurationFromINI();
+        INI.Close();
         RConsole.Log("UtilCraft+ has been loaded!");
     }
 
@@ -36,7 +37,7 @@ public class UtilCraftPlus : Mod
     /// </summary>
     public void Update()
     {
-        
+
     }
 
     /// <summary>
@@ -55,8 +56,7 @@ public class UtilCraftPlus : Mod
     /// <param name="pMaxStackSize">New maximum stack size.</param>
     public static void ChangeItemMaxStackSize(Item_Base pItem, int pMaxStackSize)
     {
-        //pItem.settings_Inventory = new ItemInstance_Inventory(pItem.settings_Inventory.Sprite, pItem.settings_Inventory.LocalizationTerm, pMaxStackSize);
-        Traverse.Create(pItem.settings_Inventory).Field("stackSize").SetValue(pMaxStackSize);
+        pItem.settings_Inventory = new ItemInstance_Inventory(pItem.settings_Inventory.Sprite, pItem.settings_Inventory.LocalizationTerm, pMaxStackSize);
     }
     
     /// <summary>
@@ -68,10 +68,7 @@ public class UtilCraftPlus : Mod
     /// <param name="pCosts">Crafting costs.</param>
     public static void CreateRecipe(Item_Base pResultItem, string pSubCategory, int pSubCategoryOrder, params CostMultiple[] pCosts)
     {
-        //pResultItem.settings_recipe = new ItemInstance_Recipe(CraftingCategory.FoodWater, true, true, pSubCategory, pSubCategoryOrder) { NewCost = pCosts };
-        Traverse.Create(pResultItem.settings_recipe).Field("subCategory").SetValue(pSubCategory);
-        Traverse.Create(pResultItem.settings_recipe).Field("subCategoryOrder").SetValue(pSubCategoryOrder);
-        Traverse.Create(pResultItem.settings_recipe).Field("newCostToCraft").SetValue(pCosts);
+        pResultItem.settings_recipe = new ItemInstance_Recipe(CraftingCategory.FoodWater, true, true, pSubCategory, pSubCategoryOrder) { NewCost = pCosts };
     }
 
     /// <summary>
@@ -110,8 +107,12 @@ public class UtilCraftPlus : Mod
     /// <summary>
     /// INI file manager
     /// </summary>
-    private static class INI
+    public static class INI
     {
+        private static FileStream stream;
+        private static StreamReader reader;
+        private static StreamWriter writer;
+
         private static void RemoveWhiteSpace(ref string pText)
         {
             while (pText[0] == ' ')
@@ -120,60 +121,195 @@ public class UtilCraftPlus : Mod
                 pText = pText.Remove(pText.Length - 1);
         }
 
+        public static void Open()
+        {
+            stream = File.Open(Directory.GetCurrentDirectory() + "\\mods\\ModData\\UtilCraftPlus\\config\\utilcraftplus.ini", FileMode.Open);
+            reader = new StreamReader(stream);
+            writer = new StreamWriter(stream);
+        }
+
+        public static void Close()
+        {
+            stream.Close();
+        }
+
+        public static Node ReadNode()
+        {
+            Node node = new Node();
+
+            bool endOfNode = false;
+            List<string> lines = new List<string>();
+
+            while (!endOfNode || reader.EndOfStream)
+            {
+                string line = reader.ReadLine();
+                if (line != "" && line[0] == ' ')
+                    RemoveWhiteSpace(ref line);
+                if (lines.Count > 0 && line == "")
+                {
+                    endOfNode = true;
+                    continue;
+                }
+                if (line == "")
+                    continue;
+                lines.Add(line);
+            }
+
+            node = new Node(lines.ToArray());
+            return node;
+        }
+
         public static void SetConfigurationFromINI()
         {
-            using (StreamReader stream = new StreamReader(File.OpenRead(Directory.GetCurrentDirectory() + "\\mods\\ModData\\UtilCraftPlus\\config\\utilcraftplus.ini")))
+            while (!reader.EndOfStream)
             {
-                string currentCategory = "";
-                string rawData;
-                while (!stream.EndOfStream)
+                Node node = ReadNode();
+                if (node.Category == "Recipe")
                 {
-                    rawData = stream.ReadLine();
-                    if (rawData == "")
-                        continue;
-                    RemoveWhiteSpace(ref rawData);
-                    if (rawData == "")
-                        continue;
-                    if (rawData[0] ==  '[' && rawData[rawData.Length - 1] == ']')
+                    int order = 0;
+                    RConsole.Log("Adding recipes");
+                    foreach (KeyValuePair<string, ININodeParams> setting in node.Settings)
                     {
-                        currentCategory = rawData.Substring(1, rawData.Length - 2);
-                        if (currentCategory == "Recipes")
-                            RConsole.Log("Adding Recipes");
-                        if (currentCategory == "Stacks")
-                            RConsole.Log("Changing item stack sizes");
-                        continue;
+                        RecipeNodeParams recipeParams = setting.Value as RecipeNodeParams;
+                        CostMultiple[] costs = new CostMultiple[recipeParams.Count / 2];
+                        for (int i = 0; i < costs.Length; i++)
+                            costs[i] = new CostMultiple(new Item_Base[] { recipeParams.GetValue<Item_Base>(i * 1) }, recipeParams.GetValue<int>(i*2));
+                        CreateRecipe(ItemManager.GetItemByName(setting.Key), recipeParams.SubCategory, order, costs);
+                        order++;
                     }
+                }
+            }
+        }
+
+        public struct ININode<T> where T : ININodeParams
+        {
+            private string _category;
+            private string _subCategory;
+            private Dictionary<string, T> _settings;
+
+            public ININode(params string[] pRawNode)
+            {
+                this._category = pRawNode[0].Split('[', ']')[1];
+                this._subCategory = "";
+                this._settings = new Dictionary<string, T>();
+
+                for (int i = 1; i < pRawNode.Length; i++)
+                {
+                    if (pRawNode[i].StartsWith(":sub="))
+                        this._subCategory = pRawNode[i].Split(new char[] { '=' }, 2)[1];
                     else
                     {
-                        string[] keyValueData = rawData.Split(new char[] { '=' }, 2);
-                        RemoveWhiteSpace(ref keyValueData[0]);
-                        RemoveWhiteSpace(ref keyValueData[1]); 
-                        if (currentCategory == "Recipes")
-                        {
-                            string[] costItemAmount = keyValueData[1].Split(new char[] { ',' }, 2);
-                                CreateTreeSeedRecipe(Items.Seed_Palm, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
-                            if (keyValueData[0] == "Seed_Mango")
-                                CreateTreeSeedRecipe(Items.Seed_Mango, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
-                            if (keyValueData[0] == "Seed_Watermelon")
-                                CreateFruitSeedRecipe(Items.Seed_Watermelon, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
-                            if (keyValueData[0] == "Seed_Pineapple")
-                                CreateFruitSeedRecipe(Items.Seed_Pineapple, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
-                            if (keyValueData[0] == "Seed_Flower_Red")
-                                CreateFlowerSeedRecipe(Items.Seed_Flower_Red, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
-                            if (keyValueData[0] == "Seed_Flower_Yellow")
-                                CreateFlowerSeedRecipe(Items.Seed_Flower_Yellow, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
-                            if (keyValueData[0] == "Seed_Flower_Blue")
-                                CreateFlowerSeedRecipe(Items.Seed_Flower_Blue, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
-                            if (keyValueData[0] == "Seed_Flower_Black")
-                                CreateFlowerSeedRecipe(Items.Seed_Flower_Black, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
-                            if (keyValueData[0] == "Seed_Flower_White")
-                                CreateFlowerSeedRecipe(Items.Seed_Flower_White, new CostMultiple(new Item_Base[] { ItemManager.GetItemByName(costItemAmount[0]) }, int.Parse(costItemAmount[1])));
-                            continue;
-                        }
-                        if (currentCategory == "Stacks")
-                            ChangeItemMaxStackSize(ItemManager.GetItemByName(keyValueData[0]), int.Parse(keyValueData[1]));
-                        continue;
+                        string[] setting;
+                        setting = pRawNode[i].Split(new char[] { '=' }, 2);
+                        if (this._category == "Recipe")
+                            _settings.Add(setting[0], (T)new RecipeNodeParams(this._subCategory, setting[1].Split(',')).This);
+                        else if (this._category == "Stacks")
+                            _settings.Add(setting[0], (T)new IntegerNodeParams(setting[1]).This);
+                        else continue;
                     }
+                }
+            }
+
+            public string Category
+            {
+                get
+                {
+                    return this._category;
+                }
+                set
+                {
+                    this._category = value;
+                }
+            }
+
+            public Dictionary<string, T> Settings
+            {
+                get
+                {
+                    return this._settings;
+                }
+            }
+        }
+
+        public class ININodeParams
+        {
+            protected object[] _values;
+
+            public T GetValue<T>(int pPosition)
+            {
+                return (T)this._values[pPosition];
+            }
+
+            public ININodeParams(params string[] pRawValues)
+            {
+                this._values = new object[pRawValues.Length];
+                for (int i = 0; i < pRawValues.Length; i++)
+                    this._values[i] = pRawValues[i];
+            }
+
+            public int Count
+            {
+                get
+                {
+                    return this._values.Length;
+                }
+            }
+        }
+
+        public class IntegerNodeParams : ININodeParams
+        {
+            public IntegerNodeParams(params string[]pRawValues)
+            {
+                this._values = new object[pRawValues.Length];
+                for (int i = 0; i < pRawValues.Length; i++)
+                    this._values[i] = int.Parse(pRawValues[i]);
+            }
+
+            public ININodeParams This
+            {
+                get
+                {
+                    return (ININodeParams)this;
+                }
+            }
+        }
+
+        public class RecipeNodeParams : ININodeParams
+        {
+            private string _subCategory = "";
+
+            public RecipeNodeParams(string pSubCategory, params string[] pRawValues)
+            {
+                this._subCategory = pSubCategory;
+                this._values = new object[pRawValues.Length];
+                for (int i = 0; i < pRawValues.Length; i++)
+                {
+                    if (i % 2 == 0)
+                    {
+                        int itemIndex;
+                        if (int.TryParse(pRawValues[i], out itemIndex))
+                            this._values[i] = ItemManager.GetItemByIndex(itemIndex);
+                        else
+                            this._values[i] = ItemManager.GetItemByName(pRawValues[i]);
+                    }
+                    else
+                        this._values[i] = int.Parse(pRawValues[i]);
+                }
+            }
+
+            public string SubCategory
+            {
+                get
+                {
+                    return this._subCategory;
+                }
+            }
+
+            public ININodeParams This
+            {
+                get
+                {
+                    return (ININodeParams)this;
                 }
             }
         }
@@ -182,7 +318,7 @@ public class UtilCraftPlus : Mod
     /// <summary>
     /// Structure containing all vanilla items as constants
     /// </summary>
-    private struct Items
+    public struct Items
     {
         public static readonly Item_Base Block_Floor_Wood = ItemManager.GetItemByIndex(1);
         public static readonly Item_Base Block_Foundation = ItemManager.GetItemByIndex(2);
